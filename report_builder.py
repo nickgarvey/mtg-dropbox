@@ -5,6 +5,8 @@ from __future__ import print_function
 from jinja2 import Template
 
 import click
+import json
+import string
 import os
 import re
 import untangle
@@ -18,30 +20,83 @@ OUTPUT_TEMPLATE = Template('''
 #<link rel="stylesheet" type="text/css" href="http://hongyanh.github.io/open-style/css/style.css">
 '''
 <link rel="stylesheet" href="https://unpkg.com/purecss@0.6.2/build/pure-min.css" integrity="sha384-UQiGfs9ICog+LwheBSRCt1o5cbyKIHbwjWscjemyBMT9YCUMZffs6UqUTd0hObXD" crossorigin="anonymous">
+<style type="text/css">
+body { margin: 20px }
+td { padding: 1px 5px }
+.tbnum { text-align: right }
+.card-red { color: red }
+.card-blue { color: blue }
+.card-green { color: green }
+.card-black { color: black }
+.card-white { color: grey }
+</style>
 </head>
+
 <body>
+<table>
+<thead>
+<tr><th>Name</th><th>Colors</th><th>Card Counts</th></tr>
+</thead>
 {% for deck in decks %}
-<div>
-<h2>{{deck.deck_path}}</h2>
-<ol>
-{% for card in deck.main %}
-    <li>{{ card }}
+<tr>
+<td><a href="{{deck.path}}">{{deck.path}}</a></td>
+<td>
+{% for color in deck.color_identity %}
+<span class="card-{{color | lower}}">{{color}}</span>
 {% endfor %}
-</ol>
-</div>
+</td>
+<td class="tbnum">{{deck.main | length}} / {{deck.side | length}}</td>
+</tr>
 {% endfor %}
 </html>
 ''')
 
+
+class CardDatabase(object):
+    def __init__(self, card_json_path, set_json_path):
+        with open(card_json_path) as cjf:
+            self.card_json = json.load(cjf)
+        with open(set_json_path) as sjf:
+            self.set_json = json.load(sjf)
+
+    def __getitem__(self, key):
+        return self.card_json[key]
+
+    def get(self, key, default=None):
+        return self.card_json.get(key, default)
+
+
+
 class Deck(object):
-    def __init__(self, deck_path, card_database):
-        self.deck_path = deck_path
+    def __init__(self, path, database):
+        self.path = path
+        self.database = database
         self.main, self.side = \
-                load_cod(deck_path) or load_dec(deck_path) or (None, None)
+                load_cod(path) or load_dec(path) or (None, None)
 
     @property
     def valid(self):
         return bool(self.main)
+
+    @property
+    def color_identity(self):
+        colors = set()
+        for card in set(self.main) | set(self.side):
+            db_card = self.database.get(card)
+            if not db_card:
+                continue
+            colors |= set(db_card.get('colorIdentity', []))
+        color_strs = [
+                {'U': 'Blue',
+                 'G': 'Green',
+                 'R': 'Red',
+                 'W': 'White',
+                 'B': 'Black'}[color] for color in colors]
+        return color_strs
+    
+    @property
+    def name(self):
+        return self.path.split('/')[-1]
 
 
 def find_decks(root_dir):
@@ -78,9 +133,11 @@ def load_dec(deck_path):
         for line in deck_file:
             if not line:
                 continue
-            match = re.match(r'(SB: *)?([0-9]* )?(.*)$', line)
+            match = re.match(r'(SB: *)?([0-9]* )?([^\n\r]+)(?:\r|\n)?$', line)
+            if not match:
+                continue
             sb, number, card = match.groups()
-            if not card:
+            if not set(card) & set(string.ascii_letters):
                 continue
             if sb:
                 side_board += [card] * int(number)
@@ -90,23 +147,24 @@ def load_dec(deck_path):
 
 
 def write_analysis(decks, output_file):
-    for deck in decks:
-        pass
-        # print(deck.deck_path, len(deck.main), len(deck.side))
     output_file.write(OUTPUT_TEMPLATE.render(decks=decks).encode('utf-8'))
 
 
 @click.command()
 @click.argument('root_dir')
+@click.argument('card_json')
+@click.argument('set_json')
 @click.argument('output_path')
-def main(root_dir, output_path):
+def main(root_dir, card_json, set_json, output_path):
+    database = CardDatabase(card_json, set_json)
+
     os.chdir(root_dir)
     # find all decks
     deck_paths = find_decks(root_dir)
     # load all decks
     decks = []
     for path in deck_paths:
-        deck = Deck(os.path.relpath(path, root_dir), None)
+        deck = Deck(os.path.relpath(path, root_dir), database)
         if deck.valid:
             decks.append(deck)
     # write analysis
