@@ -29,6 +29,7 @@ td { padding: 1px 5px }
 .card-green { color: green }
 .card-black { color: black }
 .card-white { color: grey }
+#footer { margin: 20px 0 }
 </style>
 </head>
 
@@ -48,6 +49,11 @@ td { padding: 1px 5px }
 <td class="tbnum">{{deck.main | length}} / {{deck.side | length}}</td>
 </tr>
 {% endfor %}
+</table>
+
+<div id="footer">
+<a href="https://github.com/nickgarvey/mtg-dropbox">GitHub</a>
+</div>
 </html>
 ''')
 
