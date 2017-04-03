@@ -6,9 +6,10 @@ from jinja2 import Template
 
 import click
 import json
-import string
+import numpy
 import os
 import re
+import string
 import untangle
 
 VALID_EXTENSIONS = ['cod', 'dec', 'txt']
@@ -22,15 +23,16 @@ OUTPUT_TEMPLATE = Template('''
 
 <style type="text/css">
 body { margin: 20px }
-td { padding: 1px 5px }
+td { padding: 3px 5px }
 th { padding: 1px 5px }
+.thl { text-align: left }
 .colorheader { width: 36px }
 .tbnum { text-align: right }
-.card-red { color: red }
-.card-blue { color: blue }
-.card-green { color: green }
-.card-black { color: black }
-.card-white { color: grey }
+.card-r { color: red }
+.card-u { color: blue }
+.card-g { color: green }
+.card-b { color: black }
+.card-w { color: grey }
 #footer { margin: 20px 0 }
 
 table { border-collapse: collapse; }
@@ -42,26 +44,24 @@ tr { border: none; }
 <table>
 <thead>
 <tr>
-<th />
-<th />
-<th />
-<th />
-<th />
-<th>Name</th>
-<th>Card Counts</th>
+<th>Counts</th>
+<th>CMC</th>
+<th colspan="5">Colors</th>
+<th class="thl">Name</th>
 </tr>
 </thead>
 {% for deck in decks %}
 <tr>
-{% for color in "White Blue Black Red Green".split(" ")%}
+<td class="tbnum">{{deck.main | length}} / {{deck.side | length}}</td>
+<td class="tbnum"><code>{{ deck.cmc_ascii }}</code></td>
+{% for color in "W U B R G".split(" ")%}
 <td>
 {% if color in deck.color_identity %}
-<span class="card-{{color | lower}}">&#x2714;</span>
+<span class="card-{{color | lower}}">{{color}}</span>
 {% endif %}
 </td>
 {% endfor %}
 <td><a href="{{deck.path}}">{{deck.path}}</a></td>
-<td class="tbnum">{{deck.main | length}} / {{deck.side | length}}</td>
 </tr>
 {% endfor %}
 </table>
@@ -99,25 +99,42 @@ class Deck(object):
     def valid(self):
         return bool(self.main)
 
+    def db_cards(self, side=False):
+        cards = self.main + self.side if side else self.main
+        return filter(None, [self.database.get(card) for card in cards])
+
     @property
     def color_identity(self):
         colors = set()
-        for card in set(self.main) | set(self.side):
-            db_card = self.database.get(card)
-            if not db_card:
-                continue
+        for db_card in self.db_cards(True):
             colors |= set(db_card.get('colorIdentity', []))
-        color_strs = [
-                {'U': 'Blue',
-                 'G': 'Green',
-                 'R': 'Red',
-                 'W': 'White',
-                 'B': 'Black'}[color] for color in colors]
-        return color_strs
+        return colors
     
     @property
     def name(self):
         return self.path.split('/')[-1]
+
+    @property
+    def cmcs(self):
+        return [float(card['cmc'])
+                for card in self.db_cards()
+                if not 'Land' in card['types']
+                and 'cmc' in card]
+
+    @property
+    def cmc_ascii(self):
+        l, m, u = map(int, numpy.percentile(self.cmcs, [20, 50, 80]))
+        result = ""
+        for i in range(8):
+            if i < l or i > u:
+                result += '&#xb7;'
+            elif i == l or i == u:
+                result += '|'
+            elif i == m:
+                result += '&#x25cb;'
+            else:
+                result += '-'
+        return result
 
 
 def find_decks(root_dir):
