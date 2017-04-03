@@ -19,7 +19,59 @@ OUTPUT_TEMPLATE = Template('''
 <head>
 <title>Deck Lists</title>
 
-<link rel="stylesheet" href="https://unpkg.com/purecss@0.6.2/build/pure-min.css" integrity="sha384-UQiGfs9ICog+LwheBSRCt1o5cbyKIHbwjWscjemyBMT9YCUMZffs6UqUTd0hObXD" crossorigin="anonymous">
+<link
+  rel="stylesheet"
+  href="https://unpkg.com/purecss@0.6.2/build/pure-min.css"
+  integrity="sha384-UQiGfs9ICog+LwheBSRCt1o5cbyKIHbwjWscjemyBMT9YCUMZffs6UqUTd0hObXD"
+  crossorigin="anonymous">
+
+<script type="text/javascript">
+const decks = {
+{% for deck in decks %}
+"{{deck.name}}": [
+{% for card in deck.all_cards_js %}
+{{card}},\
+{% endfor %}
+],
+{% endfor %}
+}
+
+// mostly from http://stackoverflow.com/a/133997/965648
+function price(name) {
+    if (!(name in decks)) {
+        alert('Deck name is weird', name);
+        return;
+    }
+    let deck_str = "";
+    let deck_counts = {};
+    decks[name].forEach(function(card) {
+        if (!(card in deck_counts)) {
+            deck_counts[card] = 0;
+        }
+        deck_counts[card] += 1;
+    });
+    for (let card in deck_counts) {
+        deck_str += deck_counts[card] + " " + card + "\\n";
+    }
+    const form = document.createElement("form");
+
+    form.setAttribute("method", "post");
+    form.setAttribute(
+        "action",
+        "https://www.mtggoldfish.com/tools/deck_pricer"
+    );
+    form.setAttribute("target", "_blank");
+
+    const field = document.createElement("input");
+    field.setAttribute("type", "hidden");
+    field.setAttribute("name", "deck");
+    field.setAttribute("value", deck_str);
+    form.appendChild(field);
+
+    document.body.appendChild(form);
+    form.submit();
+}
+</script>
 
 <style type="text/css">
 body { margin: 20px }
@@ -61,7 +113,12 @@ tr { border: none; }
 {% endif %}
 </td>
 {% endfor %}
-<td><a href="{{deck.path}}">{{deck.path}}</a></td>
+<td>
+<a
+  href="javascript: price('{{deck.name | escape}}')">
+{{deck.path}}
+</a>
+</td>
 </tr>
 {% endfor %}
 </table>
@@ -102,6 +159,14 @@ class Deck(object):
     def db_cards(self, side=False):
         cards = self.main + self.side if side else self.main
         return filter(None, [self.database.get(card) for card in cards])
+
+    @property
+    def name_js(self):
+        return json.dumps(self.name)
+
+    @property
+    def all_cards_js(self):
+        return map(json.dumps, self.main + self.side)
 
     @property
     def color_identity(self):
