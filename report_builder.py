@@ -123,15 +123,13 @@ class Deck(object):
 
     @property
     def cmc_ascii(self):
-        l, m, u = map(int, numpy.percentile(self.cmcs, [20, 50, 80]))
+        l, m, u = map(numpy.round, numpy.percentile(self.cmcs, [20, 50, 80]))
         result = ""
         for i in range(8):
             if i < l or i > u:
                 result += '&#xb7;'
-            elif i == l or i == u:
-                result += '|'
-            elif i == m:
-                result += '&#x25cb;'
+            elif i in [l, m, u]:
+                result += str(i)
             else:
                 result += '-'
         return result
