@@ -166,7 +166,8 @@ class Deck(object):
 
     @property
     def all_cards_js(self):
-        return map(json.dumps, self.main + self.side)
+        return [json.dumps(card.encode('ascii', 'replace'))
+                for card in self.main + self.side]
 
     @property
     def color_identity(self):
