@@ -16,13 +16,15 @@ VALID_EXTENSIONS = ['cod', 'dec', 'txt']
 OUTPUT_TEMPLATE = Template('''
 <html>
 <head>
-<title>Deck Lists</title>''' +
-#<link rel="stylesheet" type="text/css" href="http://hongyanh.github.io/open-style/css/style.css">
-'''
+<title>Deck Lists</title>
+
 <link rel="stylesheet" href="https://unpkg.com/purecss@0.6.2/build/pure-min.css" integrity="sha384-UQiGfs9ICog+LwheBSRCt1o5cbyKIHbwjWscjemyBMT9YCUMZffs6UqUTd0hObXD" crossorigin="anonymous">
+
 <style type="text/css">
 body { margin: 20px }
 td { padding: 1px 5px }
+th { padding: 1px 5px }
+.colorheader { width: 36px }
 .tbnum { text-align: right }
 .card-red { color: red }
 .card-blue { color: blue }
@@ -30,22 +32,35 @@ td { padding: 1px 5px }
 .card-black { color: black }
 .card-white { color: grey }
 #footer { margin: 20px 0 }
+
+table { border-collapse: collapse; }
+tr { border: none; }
 </style>
 </head>
 
 <body>
 <table>
 <thead>
-<tr><th>Name</th><th>Colors</th><th>Card Counts</th></tr>
+<tr>
+<th />
+<th />
+<th />
+<th />
+<th />
+<th>Name</th>
+<th>Card Counts</th>
+</tr>
 </thead>
 {% for deck in decks %}
 <tr>
-<td><a href="{{deck.path}}">{{deck.path}}</a></td>
+{% for color in "White Blue Black Red Green".split(" ")%}
 <td>
-{% for color in deck.color_identity %}
-<span class="card-{{color | lower}}">{{color}}</span>
-{% endfor %}
+{% if color in deck.color_identity %}
+<span class="card-{{color | lower}}">&#x2714;</span>
+{% endif %}
 </td>
+{% endfor %}
+<td><a href="{{deck.path}}">{{deck.path}}</a></td>
 <td class="tbnum">{{deck.main | length}} / {{deck.side | length}}</td>
 </tr>
 {% endfor %}
@@ -63,14 +78,14 @@ class CardDatabase(object):
         with open(card_json_path) as cjf:
             self.card_json = json.load(cjf)
         with open(set_json_path) as sjf:
-            self.set_json = json.load(sjf)
+            pass
+            # self.set_json = json.load(sjf)
 
     def __getitem__(self, key):
         return self.card_json[key]
 
     def get(self, key, default=None):
         return self.card_json.get(key, default)
-
 
 
 class Deck(object):
@@ -162,9 +177,9 @@ def write_analysis(decks, output_file):
 @click.argument('set_json')
 @click.argument('output_path')
 def main(root_dir, card_json, set_json, output_path):
-    database = CardDatabase(card_json, set_json)
-
     os.chdir(root_dir)
+
+    database = CardDatabase(card_json, set_json)
     # find all decks
     deck_paths = find_decks(root_dir)
     # load all decks
