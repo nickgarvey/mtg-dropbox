@@ -235,7 +235,7 @@ def load_dec(deck_path):
         for line in deck_file:
             if not line:
                 continue
-            match = re.match(r'(SB: *)?([0-9]* )?([^\n\r]+)(?:\r|\n)?$', line)
+            match = re.match(r'(SB: *)?([0-9]*)?\s*([^\n\r]+)(?:\r|\n)?$', line)
             if not match:
                 continue
             sb, number, card = match.groups()
