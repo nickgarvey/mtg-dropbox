@@ -148,7 +148,10 @@ class Deck:
     def __init__(self, path: str, database: CardDatabase):
         self.path = path
         self.database = database
-        self.main, self.side = load_cod(path) or load_dec(path) or (None, None)
+        if path.endswith(".txt"):
+            self.main, self.side = load_txt(path)
+        else:
+            self.main, self.side = load_cod(path) or load_dec(path) or (None, None)
 
     @property
     def valid(self):
@@ -197,7 +200,6 @@ class Deck:
 
     @property
     def cmc_ascii(self):
-        numpy.percentile(self.cmcs, [20, 50, 80])
         l, m, u = map(numpy.round, numpy.percentile(self.cmcs, [20, 50, 80]))
         result = ""
         for i in range(8):
@@ -237,6 +239,36 @@ def load_cod(deck_path):
     return main, side_board
 
 
+def load_txt(deck_path):
+    main = []
+    side_board = []
+    saw_sideboard = False
+    with open(deck_path) as deck_file:
+        for line in deck_file:
+            line = line.strip()
+            if not line:
+                continue
+            if line in ["Companion", "Deck", "Commander"]:
+                continue
+            if "Sideboard" in line:
+                saw_sideboard = True
+                continue
+
+            match = re.match(r"([0-9]*)?\s*([^\n\r(]+)(?: \(.*)?$", line)
+            if not match:
+                continue
+            number, card = match.groups()
+            if not set(card) & set(string.ascii_letters):
+                continue
+            to_add = [card] * int(number or 1)
+            if saw_sideboard:
+                side_board += to_add
+            else:
+                main += to_add
+
+    return main, side_board
+
+
 def load_dec(deck_path):
     main = []
     side_board = []
@@ -266,9 +298,9 @@ def write_analysis(decks, output_file):
 @click.argument("card_json")
 @click.argument("output_path")
 def main(root_dir, card_json, output_path):
-    os.chdir(root_dir)
-
     database = CardDatabase(card_json)
+
+    os.chdir(root_dir)
     # find all decks
     deck_paths = find_decks(root_dir)
     # load all decks
