@@ -26,11 +26,17 @@ OUTPUT_TEMPLATE = Template(
 <script type="text/javascript">
 const decks = {
 {% for deck in decks %}
-"{{deck.name}}": [
+"{{deck.name}}": {"mainboard": [
 {% for card in deck.mainboard_js %}
 {{card}},\
 {% endfor %}
 ],
+"sideboard": [
+{% for card in deck.sideboard_js %}
+{{card}},\
+{% endfor %}
+]
+},
 {% endfor %}
 }
 
@@ -40,16 +46,29 @@ function price(name) {
         alert('Deck name is weird', name);
         return;
     }
-    let deck_str = "";
-    let deck_counts = {};
-    decks[name].forEach(function(card) {
-        if (!(card in deck_counts)) {
-            deck_counts[card] = 0;
+
+    let main_deck_counts = {};
+    let side_deck_counts = {};
+    decks[name]["mainboard"].forEach(function(card) {
+        if (!(card in main_deck_counts)) {
+            main_deck_counts[card] = 0;
         }
-        deck_counts[card] += 1;
+        main_deck_counts[card] += 1;
     });
-    for (let card in deck_counts) {
-        deck_str += deck_counts[card] + " " + card + "\\n";
+    let main_deck_str = "";
+    for (let card in main_deck_counts) {
+        main_deck_str += main_deck_counts[card] + " " + card + "\\n";
+    }
+
+    decks[name]["sideboard"].forEach(function(card) {
+        if (!(card in side_deck_counts)) {
+            side_deck_counts[card] = 0;
+        }
+        side_deck_counts[card] += 1;
+    });
+    let side_deck_str = "";
+    for (let card in side_deck_counts) {
+        side_deck_str += side_deck_counts[card] + " " + card + "\\n";
     }
     const form = document.createElement("form");
 
@@ -63,7 +82,13 @@ function price(name) {
     let field = document.createElement("input");
     field.setAttribute("type", "hidden");
     field.setAttribute("name", "mainboard");
-    field.setAttribute("value", deck_str);
+    field.setAttribute("value", main_deck_str);
+    form.appendChild(field);
+
+    field = document.createElement("input");
+    field.setAttribute("type", "hidden");
+    field.setAttribute("name", "sideboard");
+    field.setAttribute("value", side_deck_str);
     form.appendChild(field);
 
     document.body.appendChild(form);
