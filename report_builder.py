@@ -1,7 +1,4 @@
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
+#!/usr/bin/env python3
 from jinja2 import Template
 
 import click
@@ -12,9 +9,10 @@ import re
 import string
 import untangle
 
-VALID_EXTENSIONS = ['cod', 'dec', 'txt']
+VALID_EXTENSIONS = ["cod", "dec", "txt"]
 
-OUTPUT_TEMPLATE = Template('''
+OUTPUT_TEMPLATE = Template(
+    """
 <html>
 <head>
 <title>Deck Lists</title>
@@ -29,7 +27,7 @@ OUTPUT_TEMPLATE = Template('''
 const decks = {
 {% for deck in decks %}
 "{{deck.name}}": [
-{% for card in deck.all_cards_js %}
+{% for card in deck.mainboard_js %}
 {{card}},\
 {% endfor %}
 ],
@@ -58,13 +56,13 @@ function price(name) {
     form.setAttribute("method", "post");
     form.setAttribute(
         "action",
-        "https://www.mtggoldfish.com/tools/deck_pricer"
+        "https://tappedout.net/mtg-decks/paste/"
     );
     form.setAttribute("target", "_blank");
 
-    const field = document.createElement("input");
+    let field = document.createElement("input");
     field.setAttribute("type", "hidden");
-    field.setAttribute("name", "deck");
+    field.setAttribute("name", "mainboard");
     field.setAttribute("value", deck_str);
     form.appendChild(field);
 
@@ -127,87 +125,98 @@ tr { border: none; }
 <a href="https://github.com/nickgarvey/mtg-dropbox">GitHub</a>
 </div>
 </html>
-''')
+"""
+)
 
 
-class CardDatabase(object):
-    def __init__(self, card_json_path, set_json_path):
+class CardDatabase:
+    def __init__(self, card_json_path):
         with open(card_json_path) as cjf:
             self.card_json = json.load(cjf)
-        with open(set_json_path) as sjf:
-            pass
-            # self.set_json = json.load(sjf)
 
     def __getitem__(self, key):
-        return self.card_json[key]
+        return self.card_json["data"][key]
+
+    def __contains__(self, key):
+        return key in self.card_json["data"]
 
     def get(self, key, default=None):
         return self.card_json.get(key, default)
 
 
-class Deck(object):
-    def __init__(self, path, database):
+class Deck:
+    def __init__(self, path: str, database: CardDatabase):
         self.path = path
         self.database = database
-        self.main, self.side = \
-                load_cod(path) or load_dec(path) or (None, None)
+        self.main, self.side = load_cod(path) or load_dec(path) or (None, None)
 
     @property
     def valid(self):
         return bool(self.main)
 
-    def db_cards(self, side=False):
-        cards = self.main + self.side if side else self.main
-        return filter(None, [self.database.get(card) for card in cards])
+    def db_cards(self, include_sideboard):
+        cards = self.main + self.side if include_sideboard else self.main
+        return [self.database[c][0] for c in cards if c in self.database]
 
     @property
     def name_js(self):
         return json.dumps(self.name)
 
     @property
+    def mainboard_js(self):
+        return [json.dumps(card) for card in self.main]
+
+    @property
+    def sideboard_js(self):
+        return [json.dumps(card) for card in self.side or []]
+
+    @property
     def all_cards_js(self):
-        return [json.dumps(card.encode('ascii', 'replace'))
-                for card in self.main + self.side]
+        # had this in prior version, not sure why
+        # json.dumps(card.encode("ascii", "replace"))
+        return self.mainboard_js + self.sideboard_js
 
     @property
     def color_identity(self):
         colors = set()
-        for db_card in self.db_cards(True):
-            colors |= set(db_card.get('colorIdentity', []))
+        for db_card in self.db_cards(include_sideboard=True):
+            colors |= set(db_card.get("colorIdentity", []))
         return colors
-    
+
     @property
     def name(self):
-        return self.path.split('/')[-1]
+        return self.path.split("/")[-1]
 
     @property
     def cmcs(self):
-        return [float(card['cmc'])
-                for card in self.db_cards()
-                if not 'Land' in card['types']
-                and 'cmc' in card]
+        return [
+            float(card["convertedManaCost"])
+            for card in self.db_cards(include_sideboard=False)
+            if "Land" not in card["types"] and "convertedManaCost" in card
+        ]
 
     @property
     def cmc_ascii(self):
+        numpy.percentile(self.cmcs, [20, 50, 80])
         l, m, u = map(numpy.round, numpy.percentile(self.cmcs, [20, 50, 80]))
         result = ""
         for i in range(8):
             if i < l or i > u:
-                result += '&#xb7;'
+                result += "&#xb7;"
             elif i in [l, m, u]:
                 result += str(i)
             else:
-                result += '-'
+                result += "-"
         return result
 
 
 def find_decks(root_dir):
     return [
-            os.path.join(dirpath, filename)
-            for (dirpath, dirnames, filenames) in os.walk(root_dir)
-            for filename in filenames
-            for ext in VALID_EXTENSIONS
-            if filename.lower().endswith('.' + ext)
+        os.path.join(dirpath, filename)
+        for (dirpath, dirnames, filenames) in os.walk(root_dir)
+        for filename in filenames
+        for ext in VALID_EXTENSIONS
+        if filename.lower().endswith("." + ext)
     ]
 
 
@@ -216,16 +225,16 @@ def load_cod(deck_path):
         deck = untangle.parse(deck_path)
     except Exception:
         return None
-    
+
     main = []
     side_board = []
     for zone in deck.cockatrice_deck.zone:
         for card in zone.card:
-            if zone['name'] == "side":
-                side_board += [card['name']] * int(card['number'] or 0)
+            if zone["name"] == "side":
+                side_board += [card["name"]] * int(card["number"] or 0)
             else:
-                main += [card['name']] * int(card['number'] or 0)
-    return (main, side_board)
+                main += [card["name"]] * int(card["number"] or 0)
+    return main, side_board
 
 
 def load_dec(deck_path):
@@ -235,7 +244,7 @@ def load_dec(deck_path):
         for line in deck_file:
             if not line:
                 continue
-            match = re.match(r'(SB: *)?([0-9]*)?\s*([^\n\r]+)(?:\r|\n)?$', line)
+            match = re.match(r"(SB: *)?([0-9]*)?\s*([^\n\r]+)(?:\r|\n)?$", line)
             if not match:
                 continue
             sb, number, card = match.groups()
@@ -245,22 +254,21 @@ def load_dec(deck_path):
                 side_board += [card] * int(number)
             else:
                 main += [card] * int(number or 1)
-    return (main, side_board)
+    return main, side_board
 
 
 def write_analysis(decks, output_file):
-    output_file.write(OUTPUT_TEMPLATE.render(decks=decks).encode('utf-8'))
+    output_file.write(OUTPUT_TEMPLATE.render(decks=decks))
 
 
 @click.command()
-@click.argument('root_dir')
-@click.argument('card_json')
-@click.argument('set_json')
-@click.argument('output_path')
-def main(root_dir, card_json, set_json, output_path):
+@click.argument("root_dir")
+@click.argument("card_json")
+@click.argument("output_path")
+def main(root_dir, card_json, output_path):
     os.chdir(root_dir)
 
-    database = CardDatabase(card_json, set_json)
+    database = CardDatabase(card_json)
     # find all decks
     deck_paths = find_decks(root_dir)
     # load all decks
@@ -270,8 +278,9 @@ def main(root_dir, card_json, set_json, output_path):
         if deck.valid:
             decks.append(deck)
     # write analysis
-    with open(output_path, 'w') as output:
+    with open(output_path, "w") as output:
         write_analysis(decks, output)
+
 
 if __name__ == "__main__":
     main()
