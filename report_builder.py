@@ -257,7 +257,9 @@ def load_cod(deck_path):
     side_board = []
     for zone in deck.cockatrice_deck.zone:
         for card in zone.card:
-            if zone["name"] == "side":
+            if zone["name"] == "tokens":
+                continue
+            elif zone["name"] == "side":
                 side_board += [card["name"]] * int(card["number"] or 0)
             else:
                 main += [card["name"]] * int(card["number"] or 0)
