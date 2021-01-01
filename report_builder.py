@@ -173,10 +173,7 @@ class Deck:
     def __init__(self, path: str, database: CardDatabase):
         self.path = path
         self.database = database
-        if path.endswith(".txt"):
-            self.main, self.side = load_txt(path)
-        else:
-            self.main, self.side = load_cod(path) or load_dec(path) or (None, None)
+        self.main, self.side = load_cod(path) or load_txt(path) or (None, None)
 
     @property
     def valid(self):
@@ -281,38 +278,18 @@ def load_txt(deck_path):
                 saw_sideboard = True
                 continue
 
-            match = re.match(r"([0-9]*)?\s*([^\n\r(]+)(?: \(.*)?$", line)
-            if not match:
-                continue
-            number, card = match.groups()
-            if not set(card) & set(string.ascii_letters):
-                continue
-            to_add = [card] * int(number or 1)
-            if saw_sideboard:
-                side_board += to_add
-            else:
-                main += to_add
-
-    return main, side_board
-
-
-def load_dec(deck_path):
-    main = []
-    side_board = []
-    with open(deck_path) as deck_file:
-        for line in deck_file:
-            if not line:
-                continue
-            match = re.match(r"(SB: *)?([0-9]*)?\s*([^\n\r]+)(?:\r|\n)?$", line)
+            match = re.match(r"(SB: *)?([0-9]*)?\s*([^\n\r(]+)(?: \(.*)?$", line)
             if not match:
                 continue
             sb, number, card = match.groups()
             if not set(card) & set(string.ascii_letters):
                 continue
-            if sb:
-                side_board += [card] * int(number)
+            to_add = [card] * int(number or 1)
+            if sb or saw_sideboard:
+                side_board += to_add
             else:
-                main += [card] * int(number or 1)
+                main += to_add
+
     return main, side_board
 
 
