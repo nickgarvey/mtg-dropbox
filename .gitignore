@@ -4,3 +4,5 @@ lib
 local
 pip-selfcheck.json
 report_builder_prod.py
+env/
+data/

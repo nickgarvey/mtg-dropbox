@@ -41,7 +41,7 @@ const decks = {
 }
 
 // mostly from http://stackoverflow.com/a/133997/965648
-function price(name) {
+function tapped_out(name) {
     if (!(name in decks)) {
         alert('Deck name is weird', name);
         return;
@@ -109,6 +109,7 @@ th { padding: 1px 5px }
 .card-b { color: black }
 .card-w { color: grey }
 #footer { margin: 20px 0 }
+a { text-decoration: none }
 
 table { border-collapse: collapse; }
 tr { border: none; }
@@ -119,10 +120,11 @@ tr { border: none; }
 <table>
 <thead>
 <tr>
-<th>Counts</th>
+<th>Main / Side</th>
 <th>CMC</th>
 <th colspan="5">Colors</th>
-<th class="thl">Name</th>
+<th class="thl">Link</th>
+<th class="thl">Download</th>
 </tr>
 </thead>
 {% for deck in decks %}
@@ -138,9 +140,12 @@ tr { border: none; }
 {% endfor %}
 <td>
 <a
-  href="javascript: price('{{deck.name | escape}}')">
-{{deck.path}}
+  href="javascript: tapped_out('{{deck.name | escape}}')">
+  [TO]
 </a>
+</td>
+<td>
+<a href="{{deck.path}}">{{deck.path}}</a>
 </td>
 </tr>
 {% endfor %}
