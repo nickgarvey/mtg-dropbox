@@ -26,7 +26,7 @@ OUTPUT_TEMPLATE = Template(
 <script type="text/javascript">
 const decks = {
 {% for deck in decks %}
-"{{deck.name}}": {"mainboard": [
+"{{deck.name | e}}": {"mainboard": [
 {% for card in deck.mainboard_js %}
 {{card}},\
 {% endfor %}
@@ -123,7 +123,7 @@ tr { border: none; }
 <th>Main / Side</th>
 <th>CMC</th>
 <th colspan="5">Colors</th>
-<th class="thl">Link</th>
+<th class="thl">View</th>
 <th class="thl">Download</th>
 </tr>
 </thead>
@@ -145,7 +145,7 @@ tr { border: none; }
 </a>
 </td>
 <td>
-<a href="{{deck.path}}">{{deck.path}}</a>
+<a href="{{deck.path | e}}" download>{{deck.path | e}}</a>
 </td>
 </tr>
 {% endfor %}
@@ -240,13 +240,13 @@ class Deck:
 
 
 def find_decks(root_dir):
-    return [
+    return sorted(
         os.path.join(dirpath, filename)
         for (dirpath, dirnames, filenames) in os.walk(root_dir)
         for filename in filenames
         for ext in VALID_EXTENSIONS
         if filename.lower().endswith("." + ext)
-    ]
+    )
 
 
 def load_cod(deck_path):
