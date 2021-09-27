@@ -3,11 +3,14 @@ from jinja2 import Template
 
 import click
 import json
+import logging
 import numpy
 import os
 import re
 import string
 import untangle
+
+logging.basicConfig(level="DEBUG")
 
 VALID_EXTENSIONS = ["cod", "dec", "txt"]
 
@@ -227,6 +230,8 @@ class Deck:
 
     @property
     def cmc_ascii(self):
+        if not self.cmcs:
+            return "&#xb7;" * 8
         l, m, u = map(numpy.round, numpy.percentile(self.cmcs, [20, 50, 80]))
         result = ""
         for i in range(8):
@@ -299,7 +304,10 @@ def load_txt(deck_path):
 
 
 def write_analysis(decks, output_file):
-    output_file.write(OUTPUT_TEMPLATE.render(decks=decks))
+    logging.debug("Rendering output")
+    render = OUTPUT_TEMPLATE.render(decks=decks)
+    logging.debug("Rendered output length: %d", len(render))
+    output_file.write(render)
 
 
 @click.command()
@@ -307,18 +315,22 @@ def write_analysis(decks, output_file):
 @click.argument("card_json")
 @click.argument("output_path")
 def main(root_dir, card_json, output_path):
+    logging.debug("Loading Card DB")
     database = CardDatabase(card_json)
 
+    logging.debug("Loading decks")
     os.chdir(root_dir)
     # find all decks
     deck_paths = find_decks(root_dir)
     # load all decks
     decks = []
     for path in deck_paths:
+        logging.debug("Deck path: " + path)
         deck = Deck(os.path.relpath(path, root_dir), database)
         if deck.valid:
             decks.append(deck)
     # write analysis
+    logging.debug("Writing output file %s", output_path)
     with open(output_path, "w") as output:
         write_analysis(decks, output)
 
