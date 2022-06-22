@@ -1,6 +1,6 @@
 click==7.1.2
 Jinja2==2.11.3
 MarkupSafe==1.1.1
-numpy==1.19.4
+numpy==1.22.0
 pex==2.1.34
 untangle==1.1.1
