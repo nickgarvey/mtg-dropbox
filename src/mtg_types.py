@@ -1,6 +1,6 @@
-from typing import TypedDict, List, Dict
-import card_type_gen
+from typing import Dict, List, TypedDict
 
+import card_type_gen
 
 Card = card_type_gen._Root
 

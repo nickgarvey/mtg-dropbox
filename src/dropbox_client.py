@@ -1,12 +1,11 @@
-import dropbox
 import logging
 import pickle
-import requests
-import yaml
-
 from typing import List, Tuple
 
-from dropbox.files import ListFolderResult, FileMetadata
+import dropbox
+import requests
+import yaml
+from dropbox.files import FileMetadata, ListFolderResult
 
 OAUTH_PATH = "data/oauth.pickle"
 CONFIG_PATH = "data/dropbox.yaml"

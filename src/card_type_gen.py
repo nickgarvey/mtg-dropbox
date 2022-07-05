@@ -1,6 +1,5 @@
 from typing import List, TypedDict
 
-
 _Root = TypedDict('_Root', {
     # required
     'artist': str,

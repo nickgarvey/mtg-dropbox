@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
-from jinja2 import Template
-
-import click
 import json
 import logging
-import numpy
 import os
 import re
 import string
+
+import click
+import numpy
 import untangle
+from jinja2 import Template
 
 logging.basicConfig(level="DEBUG")
 
