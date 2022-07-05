@@ -7,3 +7,5 @@ report_builder_prod.py
 env/
 data/
 deployable/
+.idea
+__pycache__/
